@@ -1,0 +1,77 @@
+name: Release Android and IOS
+on:
+  workflow_dispatch:
+    inputs:
+      tags:
+        type: number
+        required: true
+        description: "Version tag number"
+      whats_new:
+        type: string
+        required: true
+        description: "What's New description"
+
+jobs:
+  
+  release-ios:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check File in repo
+        run: |
+          ls
+        
+      - name: 'Upload app to TestFlight'
+        uses: apple-actions/upload-testflight-build@v1
+        with: 
+          app-path: 'release-ipa.zip' 
+          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
+          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Generate JWT token
+        id: generate-jwt
+        run: |
+          cd scripts
+          npm install
+          JWT_TOKEN=$(node generate_jwt.js "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" "${{ secrets.APPSTORE_API_KEY_ID }}" "${{ secrets.APPSTORE_ISSUER_ID }}")
+          echo "JWT_TOKEN=${JWT_TOKEN}" >> $GITHUB_ENV
+
+      - name: Echo JWT token
+        run: |
+          echo $JWT_TOKEN
+
+      - name: Echo GITHUB_ENV TOKEN
+        run: |
+          echo ${{ env.JWT_TOKEN }}
+          
+      - name: Update "What's New" text in App Store Connect
+        env:
+          JWT_TOKEN: ${{ env.JWT_TOKEN }}
+          WHATS_NEW_TEXT: ${{ github.event.inputs.whats_new }}
+        run: |
+          APP_ID=$(curl -g -X GET "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=com.therememberclub.app" --header "Authorization: Bearer $JWT_TOKEN")
+          
+          VERSION_ID=$(curl -g -X GET "https://api.appstoreconnect.apple.com/v1/apps/$APP_ID/appStoreVersions?filter[appStoreState]=READY_FOR_SALE" \
+            -H "Authorization: Bearer $JWT_TOKEN" | jq -r '.data[0].id')
+          
+          curl -g -X PATCH "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/$VERSION_ID" \
+            -H "Authorization: Bearer $JWT_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "data": {
+                "type": "appStoreVersionLocalizations",
+                "id": "'$VERSION_ID'",
+                "attributes": {
+                  "whatsNew": "'$WHATS_NEW_TEXT'"
+                }
+              }
+            }'
+            
