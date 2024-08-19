@@ -23,13 +23,28 @@ jobs:
         run: |
           ls
         
-      - name: 'Upload app to TestFlight'
-        uses: apple-actions/upload-testflight-build@v1
-        with: 
-          app-path: 'release-ipa' 
-          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
-          api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
-          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+      - name: Upload to TestFlight
+        env:
+          ISSUE_ID: ${{ secrets.ISSUE_ID }}
+          KEY_ID: ${{ secrets.KEY_ID }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          IPA_PATH: "release-ipa"
+          INFO_PLIST_PATH: "release-ipa/Info.plist"
+        run: |
+          # Decode the private key and save it to a file
+          echo "$PRIVATE_KEY" | base64 --decode > AuthKey_$KEY_ID.p8
+  
+          # Upload the .ipa file to TestFlight
+          xcrun altool --upload-app \
+            -f "$IPA_PATH" \
+            --apiKey "$KEY_ID" \
+            --apiIssuer "$ISSUE_ID" \
+            --output-format xml
+          
+          # Optional: Validate Info.plist file if needed
+          if [ -f "$INFO_PLIST_PATH" ]; then
+            plutil -lint "$INFO_PLIST_PATH"
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
