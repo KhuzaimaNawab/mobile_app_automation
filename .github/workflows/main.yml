@@ -157,12 +157,11 @@ jobs:
           BUILD_ID: ${{ env.BUILD_ID }}
         run: |
           curl -g -X PATCH "https://api.appstoreconnect.apple.com/v1/appStoreVersions/$APP_STORE_VERSION_APP/relationships/build" \
-            --header "Authorization: Bearer $JWT_TOKEN" \
-            --header "Content-Type: application/json" \
-            --data '{
-              "data":{
-                  "type":"builds",
-                  "id": $BUILD_ID
-                  
-              }
+          --header "Authorization: Bearer $JWT_TOKEN" \
+          --header "Content-Type: application/json" \
+          --data '{
+            "data": {
+              "type": "builds",
+              "id": "'$BUILD_ID'"
+            }
           }'
