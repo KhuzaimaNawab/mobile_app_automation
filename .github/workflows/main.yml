@@ -145,7 +145,7 @@ jobs:
                 "type": "appStoreVersionLocalizations",
                 "id": "'$VERSION_LOCALIZATION_ID'",
                 "attributes": {
-                  "whatsNew": "'$WHATS_NEW_TEXT'"
+                  "whatsNew": $WHATS_NEW_TEXT
                 }
               }
             }'
