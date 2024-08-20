@@ -52,16 +52,26 @@ jobs:
         run: |
           echo ${{ env.JWT_TOKEN }}
           
-      - name: Update "What's New" text in App Store Connect
+      - name: Get APP ID
         env:
           JWT_TOKEN: ${{ env.JWT_TOKEN }}
-          WHATS_NEW_TEXT: ${{ github.event.inputs.whats_new }}
         run: |
           APP_ID=$(curl -g -X GET "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=com.therememberclub.app" --header "Authorization: Bearer $JWT_TOKEN")
           
+      - name: Get Version ID
+        env:
+          JWT_TOKEN: ${{ env.JWT_TOKEN }}
+          APP_ID: ${{ env.APP_ID }}
+        run: |
           VERSION_ID=$(curl -g -X GET "https://api.appstoreconnect.apple.com/v1/apps/$APP_ID/appStoreVersions?filter[appStoreState]=READY_FOR_SALE" \
             -H "Authorization: Bearer $JWT_TOKEN" | jq -r '.data[0].id')
-          
+            
+      - name: Update What's new
+        env:
+          JWT_TOKEN: ${{ env.JWT_TOKEN }}
+          VERSION_ID: ${{ env.VERSION_ID }}
+          WHATS_NEW_TEXT: ${{ github.event.inputs.whats_new }}
+        run: |
           curl -g -X PATCH "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/$VERSION_ID" \
             -H "Authorization: Bearer $JWT_TOKEN" \
             -H "Content-Type: application/json" \
