@@ -23,13 +23,13 @@ jobs:
         run: |
           ls
         
-      - name: 'Upload app to TestFlight'
-        uses: apple-actions/upload-testflight-build@v1
-        with: 
-          app-path: release-ipa/TheRememberClub.ipa
-          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
-          api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
-          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+      # - name: 'Upload app to TestFlight'
+      #  uses: apple-actions/upload-testflight-build@v1
+      #  with: 
+      #    app-path: release-ipa/TheRememberClub.ipa
+      #    issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+      #    api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
+      #    api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
