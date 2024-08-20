@@ -43,20 +43,13 @@ jobs:
           npm install
           JWT_TOKEN=$(node generate_jwt.js "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" "${{ secrets.APPSTORE_API_KEY_ID }}" "${{ secrets.APPSTORE_ISSUER_ID }}")
           echo "JWT_TOKEN=${JWT_TOKEN}" >> $GITHUB_ENV
-
-      - name: Echo JWT token
-        run: |
-          echo $JWT_TOKEN
-
-      - name: Echo GITHUB_ENV TOKEN
-        run: |
-          echo ${{ env.JWT_TOKEN }}
           
       - name: Get APP ID
         env:
           JWT_TOKEN: ${{ env.JWT_TOKEN }}
         run: |
           APP_ID=$(curl -g -X GET "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=com.therememberclub.app" --header "Authorization: Bearer $JWT_TOKEN")
+          echo $APP_ID
           
       - name: Get Version ID
         env:
@@ -65,6 +58,7 @@ jobs:
         run: |
           VERSION_ID=$(curl -g -X GET "https://api.appstoreconnect.apple.com/v1/apps/$APP_ID/appStoreVersions?filter[appStoreState]=READY_FOR_SALE" \
             -H "Authorization: Bearer $JWT_TOKEN" | jq -r '.data[0].id')
+          echo $VERSION_ID
             
       - name: Update What's new
         env:
