@@ -10,6 +10,10 @@ on:
         type: string
         required: true
         description: "What's New description"
+      version_name:
+        type: string
+        required: true
+        description: "Version name"
 
 jobs:
   
@@ -83,7 +87,7 @@ jobs:
         env:
           JWT_TOKEN: ${{ env.JWT_TOKEN }}
           VERSION_APP: ${{ env.VERSION_APP }}
-          APP_ID: ${{ env.APP_ID }}
+          VERSION_NAME: ${{ github.event.inputs.version_name }}
         run: |
           RESPONSE=$(curl -g -X POST 'https://api.appstoreconnect.apple.com/v1/appStoreVersions' \
           --header 'Content-Type: application/json' \
@@ -99,7 +103,7 @@ jobs:
                       "app": {
                           "data": {
                               "type":"apps",
-                              "id": $APP_ID
+                              "id": $VERSION_NAME
                           }
                       }
                   }
