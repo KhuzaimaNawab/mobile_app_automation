@@ -138,17 +138,17 @@ jobs:
           WHATS_NEW_TEXT: ${{ github.event.inputs.whats_new }}
         run: |
           curl -g -X PATCH "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/$VERSION_LOCALIZATION_ID" \
-            --header "Authorization: Bearer $JWT_TOKEN" \
-            --header "Content-Type: application/json" \
-            --data '{
-              "data": {
-                "type": "appStoreVersionLocalizations",
-                "id": $VERSION_LOCALIZATION_ID,
-                "attributes": {
-                  "whatsNew": $WHATS_NEW_TEXT
-                }
+          --header "Authorization: Bearer $JWT_TOKEN" \
+          --header "Content-Type: application/json" \
+          --data '{
+            "data": {
+              "type": "appStoreVersionLocalizations",
+              "id": "'$VERSION_LOCALIZATION_ID'",
+              "attributes": {
+                "whatsNew": "'"$WHATS_NEW_TEXT"'"
               }
-            }'
+            }
+          }'
             
       - name: Select Build In App Store
         env:
