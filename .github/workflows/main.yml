@@ -48,9 +48,12 @@ jobs:
         env:
           JWT_TOKEN: ${{ env.JWT_TOKEN }}
         run: |
-          APP_ID=$(curl -g -X GET "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=com.therememberclub.app" --header "Authorization: Bearer $JWT_TOKEN")
+          RESPONSE=$(curl -g -X GET "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=com.therememberclub.app" \
+          --header "Authorization: Bearer $JWT_TOKEN")
+          echo "API Response: $RESPONSE"
+          APP_ID=$(echo $RESPONSE | jq -r '.data[0].id')
+          echo "Retrieved APP_ID: $APP_ID"
           echo "APP_ID=$APP_ID" >> $GITHUB_ENV
-          echo "APP_ID is $APP_ID"
 
       - name: Echo APP ID
         env:
