@@ -21,6 +21,6 @@ jobs:
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJson: service.json
-          releaseFiles: app-release.aab
+          releaseFiles: ./app-release.aab
           packageName: com.therememberclub.app
           track: production   
