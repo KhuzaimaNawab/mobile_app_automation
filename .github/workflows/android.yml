@@ -1,0 +1,22 @@
+name: Release Android
+on:
+  workflow_dispatch:
+  
+jobs:
+  release-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decode PlayStore Credentials
+        uses: akiojin/decode-base64-github-action@v0.1.0
+        id: decode-playstore-credentials
+        with:
+          base64: "${{ secrets.SERVICE_JSON }}"
+          output-path: service.json
+          
+      - name: Upload to playstore
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: service.json
+          releaseFiles: app-release.aab
+          packageName: com.therememberclub.app
+          track: production   
