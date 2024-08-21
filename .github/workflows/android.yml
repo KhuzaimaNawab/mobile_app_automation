@@ -6,6 +6,9 @@ jobs:
   release-android:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
       - name: Decode PlayStore Credentials
         uses: akiojin/decode-base64-github-action@v0.1.0
         id: decode-playstore-credentials
