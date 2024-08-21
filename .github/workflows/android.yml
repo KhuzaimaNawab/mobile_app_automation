@@ -12,6 +12,10 @@ jobs:
         with:
           base64: "${{ secrets.SERVICE_JSON }}"
           output-path: service.json
+
+      - name: Check Files
+        run: |
+          ls
           
       - name: Upload to playstore
         uses: r0adkll/upload-google-play@v1
