@@ -10,6 +10,10 @@ on:
         type: string
         required: true
         description: "What's New description"
+      version_name:
+        type: string
+        required: true
+        description: "Version name"
 
 jobs:
   
@@ -23,13 +27,13 @@ jobs:
         run: |
           ls
         
-      - name: 'Upload app to TestFlight'
-        uses: apple-actions/upload-testflight-build@v1
-        with: 
-          app-path: release-ipa/TheRememberClub.ipa
-          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
-          api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
-          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+      # - name: 'Upload app to TestFlight'
+      #  uses: apple-actions/upload-testflight-build@v1
+      #  with: 
+      #    app-path: release-ipa/TheRememberClub.ipa
+      #    issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+      #    api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
+      #    api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -43,35 +47,125 @@ jobs:
           npm install
           JWT_TOKEN=$(node generate_jwt.js "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" "${{ secrets.APPSTORE_API_KEY_ID }}" "${{ secrets.APPSTORE_ISSUER_ID }}")
           echo "JWT_TOKEN=${JWT_TOKEN}" >> $GITHUB_ENV
-
-      - name: Echo JWT token
-        run: |
-          echo $JWT_TOKEN
-
-      - name: Echo GITHUB_ENV TOKEN
-        run: |
-          echo ${{ env.JWT_TOKEN }}
           
-      - name: Update "What's New" text in App Store Connect
+      - name: Get APP ID
         env:
           JWT_TOKEN: ${{ env.JWT_TOKEN }}
+        run: |
+          RESPONSE=$(curl -g -X GET "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=com.therememberclub.app" \
+          --header "Authorization: Bearer $JWT_TOKEN")
+          echo "API Response: $RESPONSE"
+          APP_ID=$(echo $RESPONSE | jq -r '.data[0].id')
+          echo "APP_ID=$APP_ID" >> $GITHUB_ENV
+          echo $APP_ID
+
+      - name: Get Build ID
+        env:
+          JWT_TOKEN: ${{ env.JWT_TOKEN }}
+          APP_ID: ${{ env.APP_ID }}
+        run: |
+          RESPONSE=$(curl -g -X GET "https://api.appstoreconnect.apple.com/v1/builds?filter[app]=$APP_ID&sort=-uploadedDate&limit=1" \
+          --header "Authorization: Bearer $JWT_TOKEN")
+          echo "API Response: $RESPONSE"
+          BUILD_ID=$(echo $RESPONSE | jq -r '.data[0].id')
+          echo "BUILD_ID=$BUILD_ID" >> $GITHUB_ENV
+          echo $BUILD_ID
+
+      - name: Get Version App
+        env:
+          JWT_TOKEN: ${{ env.JWT_TOKEN }}
+          BUILD_ID: ${{ env.BUILD_ID }}
+        run: |
+          RESPONSE=$(curl -g -X GET "https://api.appstoreconnect.apple.com/v1/builds/$BUILD_ID/preReleaseVersion" \
+          --header "Authorization: Bearer $JWT_TOKEN")
+          echo "API Response: $RESPONSE"
+          VERSION_APP=$(echo $RESPONSE | jq -r '.data.id')
+          echo "VERSION_APP=$VERSION_APP" >> $GITHUB_ENV
+          echo $VERSION_APP
+
+      - name: Create a new version
+        env:
+          JWT_TOKEN: ${{ env.JWT_TOKEN }}
+          VERSION_APP: ${{ env.VERSION_APP }}
+          VERSION_NAME: ${{ github.event.inputs.version_name }}
+        run: |
+          RESPONSE=$(curl -g -X POST 'https://api.appstoreconnect.apple.com/v1/appStoreVersions' \
+          --header 'Content-Type: application/json' \
+          --header 'Authorization: Bearer JWT_TOKEN' \
+          --data '{
+              "data": {
+                  "type": "appStoreVersions",
+                  "attributes": {
+                      "platform":"IOS",
+                      "versionString": $VERSION_APP
+                  },
+                  "relationships": {
+                      "app": {
+                          "data": {
+                              "type":"apps",
+                              "id": $VERSION_NAME
+                          }
+                      }
+                  }
+              }
+          }
+          ')
+
+      - name: Get App Store Version ID
+        env:
+          JWT_TOKEN: ${{ env.JWT_TOKEN }}
+          APP_ID: ${{ env.APP_ID }}
+        run: |
+          RESPONSE=$(curl -g -X GET "https://api.appstoreconnect.apple.com/v1/apps/$APP_ID/appStoreVersions" \
+          --header "Authorization: Bearer $JWT_TOKEN")
+          echo "API Response: $RESPONSE"
+          APP_STORE_VERSION_APP=$(echo $RESPONSE | jq -r '.data[0].id')
+          echo "APP_STORE_VERSION_APP=$APP_STORE_VERSION_APP" >> $GITHUB_ENV
+          echo $APP_STORE_VERSION_APP
+
+      - name: Get Version Localizations Id
+        env:
+          JWT_TOKEN: ${{ env.JWT_TOKEN }}
+          APP_STORE_VERSION_APP: ${{ env.APP_STORE_VERSION_APP }}
+        run: |
+          RESPONSE=$(curl -g -X GET "https://api.appstoreconnect.apple.com/v1/appStoreVersions/$APP_STORE_VERSION_APP/appStoreVersionLocalizations" \
+          --header "Authorization: Bearer $JWT_TOKEN")
+          echo "API Response: $RESPONSE"
+          VERSION_LOCALIZATION_ID=$(echo $RESPONSE | jq -r '.data[0].id')
+          echo "VERSION_LOCALIZATION_ID=$VERSION_LOCALIZATION_ID" >> $GITHUB_ENV
+          echo $VERSION_LOCALIZATION_ID
+            
+      - name: Update What's new
+        env:
+          JWT_TOKEN: ${{ env.JWT_TOKEN }}
+          VERSION_LOCALIZATION_ID: ${{ env.VERSION_LOCALIZATION_ID }}
           WHATS_NEW_TEXT: ${{ github.event.inputs.whats_new }}
         run: |
-          APP_ID=$(curl -g -X GET "https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=com.therememberclub.app" --header "Authorization: Bearer $JWT_TOKEN")
-          
-          VERSION_ID=$(curl -g -X GET "https://api.appstoreconnect.apple.com/v1/apps/$APP_ID/appStoreVersions?filter[appStoreState]=READY_FOR_SALE" \
-            -H "Authorization: Bearer $JWT_TOKEN" | jq -r '.data[0].id')
-          
-          curl -g -X PATCH "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/$VERSION_ID" \
-            -H "Authorization: Bearer $JWT_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "data": {
-                "type": "appStoreVersionLocalizations",
-                "id": "'$VERSION_ID'",
-                "attributes": {
-                  "whatsNew": "'$WHATS_NEW_TEXT'"
-                }
+          curl -g -X PATCH "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/$VERSION_LOCALIZATION_ID" \
+          --header "Authorization: Bearer $JWT_TOKEN" \
+          --header "Content-Type: application/json" \
+          --data '{
+            "data": {
+              "type": "appStoreVersionLocalizations",
+              "id": "'$VERSION_LOCALIZATION_ID'",
+              "attributes": {
+                "whatsNew": "'"$WHATS_NEW_TEXT"'"
               }
-            }'
+            }
+          }'
             
+      - name: Select Build In App Store
+        env:
+          JWT_TOKEN: ${{ env.JWT_TOKEN }}
+          APP_STORE_VERSION_APP: ${{ env.APP_STORE_VERSION_APP }}
+          BUILD_ID: ${{ env.BUILD_ID }}
+        run: |
+          curl -g -X PATCH "https://api.appstoreconnect.apple.com/v1/appStoreVersions/$APP_STORE_VERSION_APP/relationships/build" \
+          --header "Authorization: Bearer $JWT_TOKEN" \
+          --header "Content-Type: application/json" \
+          --data '{
+            "data": {
+              "type": "builds",
+              "id": "'$BUILD_ID'"
+            }
+          }'
